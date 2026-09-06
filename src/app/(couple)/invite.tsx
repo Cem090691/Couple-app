@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Share, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -13,11 +13,22 @@ import { useCouple } from '@/lib/couple/CoupleProvider';
 
 export default function Invite() {
   const router = useRouter();
-  const { refresh } = useCouple();
+  const { couple, memberCount, refresh } = useCouple();
 
   const [code, setCode] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Filet de sécurité : si on arrive sur cet écran alors qu'on est déjà
+  // dans un couple (retour arrière, app relancée en pleine navigation),
+  // on ne montre pas le choix "créer/rejoindre" — on renvoie directement
+  // là où on doit être. Ne s'applique pas juste après avoir créé un code
+  // dans cette même session (`code` est alors déjà défini localement).
+  useEffect(() => {
+    if (couple && !code) {
+      router.replace(memberCount >= 2 ? '/' : '/(couple)/waiting');
+    }
+  }, [couple, code, memberCount, router]);
 
   async function handleCreate() {
     setError(null);

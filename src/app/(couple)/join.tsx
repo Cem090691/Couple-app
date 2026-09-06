@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
@@ -11,12 +11,21 @@ import { useCouple } from '@/lib/couple/CoupleProvider';
 
 export default function Join() {
   const router = useRouter();
-  const { refresh } = useCouple();
+  const { couple, refresh } = useCouple();
   const params = useLocalSearchParams<{ code?: string }>();
 
   const [code, setCode] = useState(params.code ?? '');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Même filet de sécurité que sur l'écran d'invitation : si on est déjà
+  // dans un couple en arrivant ici (retour arrière, relance de l'app),
+  // on ne montre pas ce formulaire — on renvoie directement au bon endroit.
+  useEffect(() => {
+    if (couple) {
+      router.replace('/');
+    }
+  }, [couple, router]);
 
   async function handleSubmit() {
     setError(null);
