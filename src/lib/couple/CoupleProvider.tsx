@@ -36,14 +36,12 @@ export function CoupleProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    console.log('[couple] refresh() for userId =', userId);
-
     const { data: myProfileRow, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
-    if (profileError) console.error('[couple] profiles error:', JSON.stringify(profileError));
+    if (profileError) console.error('[couple] profiles error:', profileError.message);
     setMyProfile(myProfileRow ?? null);
 
     const { data: membership, error: membershipError } = await supabase
@@ -51,7 +49,7 @@ export function CoupleProvider({ children }: PropsWithChildren) {
       .select('couple_id')
       .eq('user_id', userId)
       .maybeSingle();
-    console.log('[couple] membership =', JSON.stringify(membership), 'error =', JSON.stringify(membershipError));
+    if (membershipError) console.error('[couple] couple_members error:', membershipError.message);
 
     if (!membership) {
       setCouple(null);
@@ -68,9 +66,8 @@ export function CoupleProvider({ children }: PropsWithChildren) {
       supabase.from('couples').select('*').eq('id', membership.couple_id).single(),
       supabase.from('couple_members').select('user_id').eq('couple_id', membership.couple_id),
     ]);
-    if (coupleError) console.error('[couple] couples error:', JSON.stringify(coupleError));
-    if (membersError) console.error('[couple] members error:', JSON.stringify(membersError));
-    console.log('[couple] coupleRow =', JSON.stringify(coupleRow), 'members =', JSON.stringify(members));
+    if (coupleError) console.error('[couple] couples error:', coupleError.message);
+    if (membersError) console.error('[couple] couple_members (list) error:', membersError.message);
 
     setCouple(coupleRow ?? null);
     setMemberCount(members?.length ?? 0);
