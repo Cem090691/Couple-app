@@ -36,14 +36,22 @@ export function CoupleProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    const { data: myProfileRow } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    console.log('[couple] refresh() for userId =', userId);
+
+    const { data: myProfileRow, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    if (profileError) console.error('[couple] profiles error:', JSON.stringify(profileError));
     setMyProfile(myProfileRow ?? null);
 
-    const { data: membership } = await supabase
+    const { data: membership, error: membershipError } = await supabase
       .from('couple_members')
       .select('couple_id')
       .eq('user_id', userId)
       .maybeSingle();
+    console.log('[couple] membership =', JSON.stringify(membership), 'error =', JSON.stringify(membershipError));
 
     if (!membership) {
       setCouple(null);
@@ -53,10 +61,16 @@ export function CoupleProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    const [{ data: coupleRow }, { data: members }] = await Promise.all([
+    const [
+      { data: coupleRow, error: coupleError },
+      { data: members, error: membersError },
+    ] = await Promise.all([
       supabase.from('couples').select('*').eq('id', membership.couple_id).single(),
       supabase.from('couple_members').select('user_id').eq('couple_id', membership.couple_id),
     ]);
+    if (coupleError) console.error('[couple] couples error:', JSON.stringify(coupleError));
+    if (membersError) console.error('[couple] members error:', JSON.stringify(membersError));
+    console.log('[couple] coupleRow =', JSON.stringify(coupleRow), 'members =', JSON.stringify(members));
 
     setCouple(coupleRow ?? null);
     setMemberCount(members?.length ?? 0);
