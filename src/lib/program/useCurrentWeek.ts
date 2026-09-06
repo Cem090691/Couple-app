@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { useCouple } from '@/lib/couple/CoupleProvider';
@@ -22,6 +22,13 @@ export function useCurrentWeek() {
   const [week, setWeek] = useState<ProgramWeek | null>(null);
   const [progress, setProgress] = useState<WeeklyProgress[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Ce hook est monté simultanément par plusieurs écrans empilés dans la
+  // navigation (Accueil reste monté sous Questions, par ex.) : un nom de
+  // canal Realtime partagé entre instances fait planter le client
+  // Supabase ("cannot add postgres_changes callbacks ... after
+  // subscribe()"). Cet identifiant rend chaque canal unique par instance.
+  const instanceId = useId();
 
   const load = useCallback(async () => {
     if (!couple) {
@@ -49,7 +56,7 @@ export function useCurrentWeek() {
   useEffect(() => {
     if (!couple?.id || !week?.id) return;
     const channel = supabase
-      .channel(`weekly-progress-${week.id}`)
+      .channel(`weekly-progress-${week.id}-${instanceId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'weekly_progress', filter: `week_id=eq.${week.id}` },
@@ -59,7 +66,7 @@ export function useCurrentWeek() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [couple?.id, week?.id, load]);
+  }, [couple?.id, week?.id, load, instanceId]);
 
   const myProgress = progress.find((p) => p.user_id === userId) ?? null;
   const partnerProgress = progress.find((p) => p.user_id !== userId) ?? null;
