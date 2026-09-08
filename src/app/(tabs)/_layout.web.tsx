@@ -1,4 +1,5 @@
-import { Redirect, Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
@@ -13,10 +14,16 @@ export default function TabsLayoutWeb() {
   const scheme = useColorScheme();
   const palette = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const { couple, memberCount, isLoading } = useCouple();
+  const router = useRouter();
+  const shouldLeave = !isLoading && (!couple || memberCount < 2);
 
-  if (!isLoading && (!couple || memberCount < 2)) {
-    return <Redirect href="/" />;
-  }
+  // Voir _layout.tsx : `useEffect` plutôt qu'un `<Redirect>` direct dans
+  // le rendu, pour éviter une boucle infinie de navigation.
+  useEffect(() => {
+    if (shouldLeave) router.replace('/');
+  }, [shouldLeave, router]);
+
+  if (shouldLeave) return null;
 
   return (
     <Tabs

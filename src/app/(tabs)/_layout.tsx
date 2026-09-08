@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Redirect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
@@ -10,13 +11,20 @@ export default function TabsLayout() {
   const scheme = useColorScheme();
   const palette = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const { couple, memberCount, isLoading } = useCouple();
+  const router = useRouter();
+  const shouldLeave = !isLoading && (!couple || memberCount < 2);
 
   // Filet de sécurité : si on arrive ici sans couple complet (lien
-  // profond, retour en arrière), on renvoie vers la porte d'entrée qui
-  // sait où rediriger.
-  if (!isLoading && (!couple || memberCount < 2)) {
-    return <Redirect href="/" />;
-  }
+  // profond, retour en arrière, ou on vient de quitter le couple), on
+  // renvoie vers la porte d'entrée qui sait où rediriger. Un `useEffect`
+  // plutôt qu'un `<Redirect>` direct dans le rendu : ce dernier
+  // redéclenche la navigation à chaque re-render tant que la condition
+  // est vraie, ce qui a provoqué une boucle infinie en pratique.
+  useEffect(() => {
+    if (shouldLeave) router.replace('/');
+  }, [shouldLeave, router]);
+
+  if (shouldLeave) return null;
 
   return (
     <NativeTabs backgroundColor={palette.background} tintColor={palette.primary} labelStyle={{ color: palette.text }}>
