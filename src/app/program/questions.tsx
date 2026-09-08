@@ -48,7 +48,11 @@ export default function Questions() {
   const canProceed = useMemo(() => {
     if (!current) return false;
     if (current.kind === 'scale') return typeof currentValue === 'object' && currentValue !== null && 'scale' in currentValue;
-    if (current.kind === 'choice') return typeof currentValue === 'object' && currentValue !== null && 'choice' in currentValue;
+    if (current.kind === 'choice') {
+      if (!currentValue) return false;
+      if (current.allow_multiple) return 'choices' in currentValue && currentValue.choices.length > 0;
+      return 'choice' in currentValue;
+    }
     return typeof currentValue === 'object' && currentValue !== null && 'text' in currentValue && (currentValue as { text: string }).text.trim().length > 0;
   }, [current, currentValue]);
 
@@ -97,9 +101,18 @@ export default function Questions() {
           <ScalePicker
             value={currentValue && 'scale' in currentValue ? currentValue.scale : null}
             onChange={(n) => setAnswer({ scale: n })}
+            labels={current.scale_labels}
           />
         ) : null}
-        {current.kind === 'choice' ? (
+        {current.kind === 'choice' && current.allow_multiple ? (
+          <ChoicePicker
+            options={current.options ?? []}
+            multiple
+            value={currentValue && 'choices' in currentValue ? currentValue.choices : []}
+            onChange={(v) => setAnswer({ choices: v })}
+          />
+        ) : null}
+        {current.kind === 'choice' && !current.allow_multiple ? (
           <ChoicePicker
             options={current.options ?? []}
             value={currentValue && 'choice' in currentValue ? currentValue.choice : null}

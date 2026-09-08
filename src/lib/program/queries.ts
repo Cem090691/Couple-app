@@ -1,5 +1,13 @@
 import { supabase } from '@/lib/supabase/client';
-import type { Answer, AnswerValue, ProgramWeek, Question, WeeklyProgress, WeekInsight } from '@/lib/supabase/types';
+import type {
+  Answer,
+  AnswerValue,
+  CoupleWeekHistoryEntry,
+  ProgramWeek,
+  Question,
+  WeeklyProgress,
+  WeekInsight,
+} from '@/lib/supabase/types';
 
 export async function getWeek(trackId: string, weekNumber: number): Promise<ProgramWeek> {
   const { data, error } = await supabase
@@ -100,6 +108,18 @@ export async function getWeekInsights(weekId: string): Promise<WeekInsight[]> {
 export async function advanceCurrentWeek(): Promise<void> {
   const { error } = await supabase.rpc('advance_current_week');
   if (error) throw error;
+}
+
+/** Mémoire simple du couple : une ligne par semaine terminée, plus récente d'abord. */
+export async function getCoupleHistory(coupleId: string, limit = 20): Promise<CoupleWeekHistoryEntry[]> {
+  const { data, error } = await supabase
+    .from('couple_week_history')
+    .select('*')
+    .eq('couple_id', coupleId)
+    .order('completed_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data;
 }
 
 export async function getSixWeekOverview(

@@ -56,10 +56,14 @@ export type Question = {
   prompt: string;
   kind: QuestionKind;
   options: ChoiceOption[] | null;
+  /** kind = 'choice' uniquement : sélection de plusieurs réponses. */
+  allow_multiple: boolean;
+  /** kind = 'scale' uniquement : 5 libellés, affichés sous l'échelle une fois une valeur choisie. */
+  scale_labels: string[] | null;
   created_at: string;
 };
 
-export type AnswerValue = { scale: number } | { choice: string } | { text: string };
+export type AnswerValue = { scale: number } | { choice: string } | { choices: string[] } | { text: string };
 
 export type Answer = {
   id: string;
@@ -69,6 +73,15 @@ export type Answer = {
   value: AnswerValue;
   created_at: string;
   updated_at: string;
+};
+
+export type CoupleWeekHistoryEntry = {
+  id: string;
+  couple_id: string;
+  track_id: string;
+  week_number: number;
+  week_title: string;
+  completed_at: string;
 };
 
 export type WeeklyProgress = {
@@ -85,9 +98,26 @@ export type WeekInsight = {
   question_id: string;
   kind: QuestionKind;
   both_answered: boolean;
+  /** true si un point commun a été trouvé (choix/échelle/texte). */
   match?: boolean | null;
-  shared_value?: string | null;
+  /**
+   * Catégories de besoin communes aux deux réponses (kind 'choice' ou
+   * 'text'). Jamais les choix qui ne matchent pas — voir get_week_insights.
+   */
+  common?: string[];
+  /** true si `common` vient d'une inférence par mots-clés sur du texte libre, pas d'un choix explicite. */
+  inferred?: boolean;
 };
+
+/** Les 7 besoins réutilisés d'une semaine à l'autre pour le moteur de synthèse. */
+export type NeedCategory =
+  | 'affection'
+  | 'temps_ensemble'
+  | 'communication'
+  | 'spontaneite'
+  | 'sorties'
+  | 'attention'
+  | 'intimite';
 
 // NB : on n'utilise volontairement pas le paramètre générique `Database`
 // de `createClient<Database>()`. Le modéliser correctement demanderait

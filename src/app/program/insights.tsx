@@ -7,25 +7,45 @@ import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { Spacing } from '@/constants/theme';
+import { needLabel } from '@/lib/program/needs';
 import { getQuestions, getWeekInsights } from '@/lib/program/queries';
 import { useCurrentWeek } from '@/lib/program/useCurrentWeek';
 import type { Question, WeekInsight } from '@/lib/supabase/types';
 
-function insightMessage(question: Question, insight: WeekInsight): string {
-  if (!insight.both_answered) {
-    return 'En attente de la réponse de votre partenaire.';
+type CommonEntry = { key: string; text: string };
+type DifferentEntry = { key: string; text: string };
+
+function buildCommonEntries(question: Question, insight: WeekInsight): CommonEntry[] {
+  if (question.kind === 'scale') {
+    if (!insight.match) return [];
+    return [{ key: `${question.id}-scale`, text: `❤️ Vous êtes sur la même longueur d’onde sur : « ${question.prompt} »` }];
+  }
+  if (!insight.common?.length) return [];
+  return insight.common.map((category) => {
+    const label = needLabel(category);
+    const text = insight.inferred
+      ? `${label} — vous semblez tous les deux avoir exprimé un besoin similaire de ce côté-là, chacun avec vos propres mots.`
+      : `${label} — vous avez tous les deux exprimé cette envie.`;
+    return { key: `${question.id}-${category}`, text };
+  });
+}
+
+function buildDifferentEntry(question: Question, insight: WeekInsight): DifferentEntry | null {
+  if (!insight.both_answered) return null;
+  if (question.kind === 'scale') {
+    if (insight.match !== false) return null;
+    return { key: `${question.id}-scale`, text: `« ${question.prompt} » : vos ressentis diffèrent un peu cette semaine, et c’est tout à fait normal.` };
   }
   if (question.kind === 'text') {
-    return 'Vous avez chacun partagé votre point de vue — l’occasion d’en discuter ensemble.';
+    // Pas de contenu comparable détecté — reste neutre, jamais présenté comme un manque.
+    if (insight.common?.length) return null;
+    return null;
   }
-  if (insight.match) {
-    if (question.kind === 'choice' && insight.shared_value) {
-      const label = question.options?.find((o) => o.value === insight.shared_value)?.label ?? insight.shared_value;
-      return `❤️ Vous avez tous les deux envie de retrouver davantage de ${label.toLowerCase()}.`;
-    }
-    return '❤️ Vous êtes sur la même longueur d’onde sur ce point.';
-  }
-  return 'Vous n’avez pas exactement les mêmes besoins, et c’est normal. Prenez quelques minutes pour en parler.';
+  if (insight.common?.length) return null;
+  return {
+    key: `${question.id}-diff`,
+    text: `« ${question.prompt} » : vous n’avez pas exprimé exactement le même besoin cette fois-ci. C’est simplement une occasion de découvrir ce qui compte le plus pour chacun de vous.`,
+  };
 }
 
 export default function Insights() {
@@ -46,7 +66,7 @@ export default function Insights() {
     })();
   }, [week]);
 
-  if (isLoading) {
+  if (isLoading || !week) {
     return (
       <Screen centered>
         <ThemedText themeColor="textSecondary">Chargement…</ThemedText>
@@ -54,22 +74,53 @@ export default function Insights() {
     );
   }
 
+  const common = questions.flatMap((q) => {
+    const insight = insights.find((i) => i.question_id === q.id);
+    return insight ? buildCommonEntries(q, insight) : [];
+  });
+  const different = questions.flatMap((q) => {
+    const insight = insights.find((i) => i.question_id === q.id);
+    const entry = insight ? buildDifferentEntry(q, insight) : null;
+    return entry ? [entry] : [];
+  });
+
   return (
     <Screen>
-      <ThemedText type="subtitle">Vos points communs</ThemedText>
+      <ThemedText type="subtitle">Votre synthèse de la semaine</ThemedText>
 
-      {questions.map((question) => {
-        const insight = insights.find((i) => i.question_id === question.id);
-        if (!insight) return null;
-        return (
-          <ThemedView key={question.id} type="backgroundElement" style={styles.card}>
-            <ThemedText type="small" themeColor="textSecondary">
-              {question.prompt}
+      <ThemedView type="backgroundElement" style={styles.section}>
+        <ThemedText type="smallBold">💕 Ce que vous avez en commun</ThemedText>
+        {common.length > 0 ? (
+          common.map((entry) => (
+            <ThemedText key={entry.key} style={styles.entryText}>
+              {entry.text}
             </ThemedText>
-            <ThemedText>{insightMessage(question, insight)}</ThemedText>
-          </ThemedView>
-        );
-      })}
+          ))
+        ) : (
+          <ThemedText themeColor="textSecondary" style={styles.entryText}>
+            Pas de correspondance nette à mettre en avant cette semaine — ce n’est pas grave, l’important est d’apprendre à se connaître.
+          </ThemedText>
+        )}
+      </ThemedView>
+
+      {different.length > 0 ? (
+        <ThemedView type="backgroundElement" style={styles.section}>
+          <ThemedText type="smallBold">💭 Ce qui est différent</ThemedText>
+          {different.map((entry) => (
+            <ThemedText key={entry.key} themeColor="textSecondary" style={styles.entryText}>
+              {entry.text}
+            </ThemedText>
+          ))}
+        </ThemedView>
+      ) : null}
+
+      <ThemedView type="backgroundElement" style={styles.section}>
+        <ThemedText type="smallBold">✨ Votre expérience de la semaine</ThemedText>
+        <ThemedText style={styles.entryText}>{week.experience_title}</ThemedText>
+        <ThemedText themeColor="textSecondary" style={styles.entryText}>
+          {week.experience_instructions}
+        </ThemedText>
+      </ThemedView>
 
       <Button label="Découvrir votre expérience" onPress={() => router.push('/program/experience')} />
     </Screen>
@@ -77,5 +128,6 @@ export default function Insights() {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.one },
+  section: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.two },
+  entryText: { lineHeight: 22 },
 });

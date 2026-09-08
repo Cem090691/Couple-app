@@ -35,7 +35,7 @@ export default function Home() {
   return (
     <Screen>
       <ThemedText type="small" themeColor="textSecondary">
-        ❤️ {isContinueMode ? 'Votre rituel hebdomadaire' : 'Votre reconnexion'}
+        {isContinueMode ? '💕 Notre rituel' : '❤️ Se retrouver'}
       </ThemedText>
 
       <View>

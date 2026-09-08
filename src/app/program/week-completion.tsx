@@ -56,8 +56,8 @@ export default function WeekCompletion() {
           ❤️ Vous avez terminé votre premier parcours.
         </ThemedText>
         <ThemedText themeColor="textSecondary" style={{ textAlign: 'center' }}>
-          Vous avez pris du temps pour vous retrouver, parler et mieux comprendre vos besoins. Continuez à prendre
-          soin de votre relation, une semaine à la fois.
+          Vous avez pris du temps pour vous retrouver, parler et mieux comprendre vos besoins. À partir de
+          maintenant, place à 💕 Notre rituel : un petit check-in chaque semaine, quelques minutes suffisent.
         </ThemedText>
         <Button label="Découvrir cette semaine" onPress={() => router.replace('/(tabs)')} />
       </Screen>
